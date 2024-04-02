@@ -1,4 +1,6 @@
 package com.example.jwttoken.service;
+
+import com.example.jwttoken.producer.RabbitMQProducer;
 import com.example.jwttoken.request.CreateUserRequest;
 import com.example.jwttoken.model.Token;
 import com.example.jwttoken.model.User;
@@ -23,13 +25,15 @@ public class UserService implements UserDetailsService {
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final JwtService jwtService;
     private final TokenRepository tokenRepository;
+    private final RabbitMQProducer rabbitMQProducer;
 
 
-    public UserService(UserRepository userRepository, BCryptPasswordEncoder bCryptPasswordEncoder, JwtService jwtService, TokenRepository tokenRepository) {
+    public UserService(UserRepository userRepository, BCryptPasswordEncoder bCryptPasswordEncoder, JwtService jwtService, TokenRepository tokenRepository, RabbitMQProducer rabbitMQProducer) {
         this.userRepository = userRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.jwtService = jwtService;
         this.tokenRepository = tokenRepository;
+        this.rabbitMQProducer = rabbitMQProducer;
     }
 
     @Override
@@ -62,6 +66,7 @@ public class UserService implements UserDetailsService {
         var token = jwtService.generateToken(registeredUser.getUsername());
         registeredUser.setToken(token);
         saveToken(registeredUser, token);
+        rabbitMQProducer.sendWelcomeEmailToQueue(newUser.getEmail());
         return CreateUserResponse.builder()
                 .user(registeredUser)
                 .message("Success").build();
